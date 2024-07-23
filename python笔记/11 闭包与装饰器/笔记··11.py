@@ -1,0 +1,168 @@
+闭包与装饰器
+1.闭包
+在一内部函数中，引用外部函数的变量，并且该内部函数可在其外部函数被调用之后继续访问这些变量。
+    1.1 直接修改与间接修改
+直接修改：在闭包中，直接修改外部函数的变量(硬盘关机重装)
+间接修改：在闭包中，通过某种间接方式修改外部函数的变量(硬盘关机重装)
+    1.2 初认识闭包函数         (单纯闭包没意义,都是装饰器的闭包)
+    闭：封闭；闭包主要函数是第二层函数，第一层是封闭函数的作用
+    包：数据包=>传入的数据包，放到第二层函数进行处理
+    前提:
+	    ①  嵌套函数：一个函数套一个函数
+	    ②  函数对象：函数可以作为一个参数传递
+	    ③  作用域: 可以作用到闭包里面
+    格式:
+    def func():
+        def inner():
+         print("123456")
+       return inner  # 返回是inner本身，不是调用
+    func()()
+
+    例：
+    def func():
+        def inner():
+            print("这个是一个闭包")
+        return inner
+    # 嵌套列表中剥洋葱
+    # 第一个是func() =>返回 inner
+    func()
+    #第二个括号() => inner + () => 运行里面的inner函数代码
+    func()()
+
+2.装饰器
+    2.1  定义：
+        ①  本身就一闭包
+        ②  函数作为一个参数进行传递
+    2.2  运用场景：
+        不修改源代码的调用方式和源代码的本身情况下，进行代码的增加功能
+    例：
+    # 源码部分：
+    def add():
+        print("这个是源代码add")
+
+    def info():
+        print("这个是源代码info")
+
+    def func3():
+        print("这个是源代码func3")
+
+    # 后期要添加一个结束语： (也可放在源码前)
+    def 装饰器(func):  # func即参数，谁传进 即 谁的源代码，func 复制源代码里面的代码
+        def inner():
+            func()  # 就是执行源代码
+            print("结束")
+        return inner
+
+    装饰器(add)()
+    装饰器(info)()
+    装饰器(func3)()
+
+    2.3  语法糖 @    为简洁语法，不修改调用：@+装饰器名 放到源码代码上方即可
+    例：
+    def 语法糖(func):  # func就是参数，谁传进来就是谁的源代码，func 复制源代码里面的代码
+        def inner():
+            print("这个是开头语")
+            func()  # 就是执行源代码
+            print("结束")
+        return inner
+    def 语法糖2(cc):  #可以多加，如果不传入cc，装饰器就无法访问并执行需要包装的函数，即失去了装饰器意义
+        def en():
+            print("shiyan")
+            cc()
+            print("333")
+        return en
+    @语法糖
+    @语法糖2
+    def add():
+        print("这个是源代码add")
+    @语法糖
+    @语法糖2
+    def info():
+        print("这个是源代码info")
+    @语法糖2
+    def func3():
+        print("这个是源代码func3")
+
+    add()
+    info()
+    func3()
+
+    2.4  带定长参数的装饰器          (不好用)
+    格式：
+    def func1(源代码名):
+        def inner(形参1,形参2):
+            代码块
+        return inner
+
+    def 源代码名(形参1,形参2):
+        代码块
+
+    例：
+    def 装饰器(func):
+        def inner(number1, number2, number3):  # inner也是源代码
+            # print("正在计算中")
+            func(number1, number2, number3)  # 就是执行源代码
+            # print("计算结束")
+        return inner
+
+    # add = inner = func   三者一样
+    @装饰器
+    def add(number1, number2, number3):
+        print(f"结果为{number1+number2+number3}")
+    add(1, 2, 3)  #实参和形参一致
+
+    2.5  带不定长参数的装饰器      (多用)
+    允许装饰器处理  任何类型  和  数量  的参数
+    格式：
+    def func1(源代码名):
+        def inner(*args, **kwargs):  # 可以有一个空元组/空字典，也可都是空元组/空字典
+            代码块
+    return inner
+    def 源代码名(形参1,形参2):
+        代码块
+
+    例：
+    def 装饰器(func):
+        def inner(*args, **kwargs):
+            print("正在计算中")
+            func(*args, **kwargs)
+            print("计算结束")
+        return inner
+    @装饰器
+    def add(number1, number2, number3):
+        print(f"结果为{number1+number2+number3}")
+
+    @装饰器
+    def sub(number1, number2):
+        print(f"结果{number1-number2}")
+
+    @装饰器
+    def info():
+        print(f"xxxxxxx")
+
+    @装饰器
+    def Dict(**kwargs):
+        print(f"Dict:{kwargs}")
+
+    add(1, 2, 3)
+    sub(1, 2)
+    info()
+    Dict(a=1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
