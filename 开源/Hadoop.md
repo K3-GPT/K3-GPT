@@ -136,7 +136,7 @@ cat 1.txt
 docker exec -it kk /bin/bash
 
 #2.
-#修改软件安装源		(注：因需要访问 vault.centos.org 的 CentOS 历史存档源,所以需要 联网)
+#修改软件安装源		(注：因需要访问 vault.centos.org 的 CentOS 历史存档源,所以 需要 联网)
 sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
 sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 yum makecache
@@ -154,7 +154,8 @@ yum install -y  java-1.8.0-openjdk-devel    openssh-clients     openssh-server
 
 ```
 #4.
-#启用 SSH 服务  记得先exit
+#启用 SSH 服务 
+exit
 systemctl enable sshd && systemctl start sshd
 
 #退出，停止，然后保存为镜像(后续则无需再执行3. 4. = 无需联网)
@@ -178,7 +179,7 @@ docker run -d --name=hadoop_1 --privileged java_ssh /usr/sbin/init
 wget  ftp://172.16.170.50/hadoop-3.1.4.tar.gz
 ```
 
-## #其他用户从我的云盘下载压缩包到实体机，然后通过共享文件夹传入到虚拟机        (目前问题为解决 请直接跳转到 8.)
+## #其他用户从我的云盘下载压缩包到实体机，然后通过共享文件夹传入到虚拟机        (用校园网FTP的同学可直接跳转到 8.)
 
 ## 一，打开虚拟机的文件共享
 
@@ -200,71 +201,81 @@ wget  ftp://172.16.170.50/hadoop-3.1.4.tar.gz
 
 ## 四，回到VM 设置路径，名称自定义(不建议用中文)
 
-![image-20241017114746191](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241017114746191.png![image-20241017114853254](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241017114853254.png)
+![image-20241019010831385](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241019010831385.png)
 
 
 
 
 
-## 五，到终端进行路径挂载（重启后重新挂载）
+## 五，到终端进行路径挂载（重启后可能需要重新挂载）
 
 ```
 #挂载
-sudo mount -t fuse.vmhgfs-fuse .host:/ /mnt/gongxinag -o allow_other
+sudo mount -t fuse.vmhgfs-fuse .host:/ /mnt/hgfs/ -o allow_other
                                        #挂载点
-#访问               tab键
-ls /mnt/gongxinag/共享文件夹
+#如果报错        
+#  fuse: mountpoint is not empty
+#  fuse: if you are sure this is safe, use the 'nonempty' mount option
+sudo umount /mnt/hgfs/                                      
+
+#访问挂载点有没有 hadoop-3.1.4.tar.gz 文件               tab键
+ls /mnt/hgfs/Folder/
 ```
 
-![image-20241017125754341](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241017125754341.png)
+![image-20241019011042144](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241019011042144.png)
 
 
 
-## 六，cp主机的文件到容器中
+## 六，CP 主机的文件
 
 ```
-#在容器中先创建一个解压路径
-mkdir /usr/local/hadoop
-exit
-
-#CP
-#格式： docker cp                       <主机文件路径> <容器名>:<容器内路径>
-docker cp /mnt/gongxiang/共享文件夹/hadoop-3.1.4.tar.gz kk:/
+#建议先CP到 Linux 中的 / 
+ls /mnt/hgfs/Folder
+cp /mnt/hgfs/Folder/hadoop-3.1.4.tar.gz /
+ls /mnt/hgfs/Folder
 ```
 
+![image-20241019011121826](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241019011121826.png)
 
+```
+#再 docker cp 到容器里
+#格式： docker cp             <主机文件路径> <容器名>:<容器内路径>
+docker cp /mnt/hgfs/Folder/hadoop-3.1.4.tar.gz kk:/
+```
+
+![image-20241019011938807](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241019011938807.png)
+
+
+
+```
+#进入容器开始解压，在此之前别忘了先打开
+docker start kk
+docker exec -it kk /bin/bash
+ls 
+
+#如果 ls 有 hadoop-3.1.4.tar.gz 文件，就成功了
+```
+
+![image-20241019012334021](C:\Users\24390\AppData\Roaming\Typora\typora-user-images\image-20241019012334021.png)
 
 
 
 ```
 #7.
-#解压文件
-docker exec -it kk /bin/bash
-tar -xzf hadoop-3.1.4.tar.gz
-mv hadoop-3.1.4 /usr/local/hadoop  
-
-echo 'export HADOOP_HOME=/usr/local/hadoop' >> /etc/bashrc 
-echo 'export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin' >> /etc/bashrc 
-source  /etc/bashrc
-
-#运行后，如果运行 echo $HADOOP_HOME 的结果是 /usr/local/hadoop 则成功
-```
-
-
-
-```
-#8.
-#解压
+#解压  在容器中！！
 tar -zxvf hadoop-3.1.4.tar.gz
 #移动到常用路径
 mv    hadoop-3.1.4     /usr/local/hadoop     
-#配置环境变量
+#配置环境变量  这一段要一步一步来
 echo 'export HADOOP_HOME=/usr/local/hadoop' >> /etc/bashrc 
 echo 'export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin' >> /etc/bashrc 
+
 exit
 docker exec -it kk /bin/bash
+
 echo 'export JAVA_HOME=/usr' >> $HADOOP_HOME/etc/hadoop/hadoop-env.sh 
 echo 'export HADOOP_HOME=/usr/local/hadoop' >> $HADOOP_HOME/etc/hadoop/hadoop-env.sh
+
 
 #配置后，如果运行 后的内容如下，则正常 
 hadoop
@@ -280,7 +291,7 @@ hadoop version
 
 ```
 #运行 PI
-hadoop jar /usr/local/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.1.4.jar     
+hadoop jar /usr/local/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.1.4.jar pi 500 500        
 ```
 
 
