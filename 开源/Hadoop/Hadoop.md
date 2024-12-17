@@ -9,7 +9,7 @@
 # 下载软件和镜像
 
 ```
-1.从 ftp://172.16.170.50/ 中的文件夹 VM已安装好的镜像中 下载 Centos_7.zip并解压到相关文件夹
+1.从 ftp://172.16.170.50/ ftp://172.16.193.251中的文件夹 VM已安装好的镜像中 下载 Centos_7.zip并解压到相关文件夹
 2.打开VM （win10 用VM 15，win11 用 VM 16），找到解压后的VMX文件拖入软件。
 账号和密码都为 root。
 
@@ -1070,11 +1070,20 @@ docker  image  tag   java_ssh_self:v1     hadoop:v1
 
 ```
 wget    -P   /opt/packages/     ftp://172.16.170.50/zookeeper-3.4.12.tar.gz     
-#顺便安装 hadoop-2.7.6 十. 用
+#顺便安装 hadoop-2.7.6 十. 用；jdk-8u211-linux-x64 十二. 用
 wget    -P   /opt/packages/     ftp://172.16.170.50/hadoop-2.7.6.tar.gz     
+wget   -P   /opt/packages/    ftp://172.16.170.50/jdk-8u211-linux-x64.tar.gz  
 
 tar -zxvf /opt/packages/zookeeper-3.4.12.tar.gz -C /opt/programs
 tar -zxvf /opt/packages/hadoop-2.7.6.tar.gz -C /opt/programs
+tar -zxvf  /opt/packages/jdk-8u211-linux-x64.tar.gz   -C  /opt/programs  
+
+
+   
+
+# 进入容器解压
+docker exec -it bbc  /bin/bash   
+
 ```
 
 ## #②CP法 习题10
@@ -1086,13 +1095,15 @@ sudo mount -t fuse.vmhgfs-fuse .host:/ /mnt/hgfs/ -o allow_other
 
 cp /mnt/hgfs/Folder/zookeeper-3.4.12.tar.gz /
 cp /mnt/hgfs/Folder/hadoop-2.7.6.tar.gz /
+cp /mnt/hgfs/Folder/jdk-8u211-linux-x64.tar.gz /
 docker cp /zookeeper-3.4.12.tar.gz aa:/opt/packages
 docker cp /hadoop-2.7.6.tar.gz aa:/opt/packages
-
+docker cp //jdk-8u211-linux-x64.tar.gz bbc:/opt/packages  
 
 docker exec -it aa  /bin/bash
 tar -zxvf  /opt/packages/zookeeper-3.4.12.tar.gz  -C  /opt/programs 
 tar -zxvf /opt/packages/hadoop-2.7.6.tar.gz -C /opt/programs
+tar -zxvf  /opt/packages/jdk-8u211-linux-x64.tar.gz   -C  /opt/programs  
 ```
 
 
@@ -1138,6 +1149,7 @@ echo 'server.3=hadoop03:2888:3888' >> $ZOOKEEPER_HOME/conf/zoo.cfg
 
 rm  -rf  /opt/packages/zookeeper-3.4.12.tar.gz
 rm  -rf  /opt/packages/hadoop-2.7.6.tar.gz
+rm  -rf  /opt/packages/jdk-8u211-linux-x64.tar.gz
 yum install  vim
 
 #验证 
@@ -1423,9 +1435,31 @@ docker network prune -f && \docker network create --subnet=192.168.0.0/24 newnet
 
 
 
-## #2. 创建三个容器，并且指定IP
+## #2. 封装为镜像 hadoop:v4
+
+```
+echo '192.168.0.201        hadoop01' > ~/hosts
+echo '192.168.0.202        hadoop02' >> ~/hosts
+echo '192.168.0.203        hadoop03' >> ~/hosts
+echo 'cat  ~/hosts  > /etc/hosts' >   /etc/profile.d/dns.sh
+
+vim Dockerfile
+
+FROM hadoop:v3
+RUN  \
+echo '192.168.0.201        hadoop01' > ~/hosts && \
+echo '192.168.0.202        hadoop02' >> ~/hosts  && \
+echo '192.168.0.203        hadoop03' >> ~/hosts  && \
+echo 'cat  ~/hosts  > /etc/hosts' >    /etc/profile.d/dns.sh
+
+docker build -t="hadoop:v4"   .
+```
+
+![image-20241106153302791](png/image-20241106153302791.png)
 
 
+
+## #3. 创建三个容器，并且指定IP
 
 ```
 docker run -itd  --name=hadoop01  -h hadoop01  --privileged \
@@ -1449,7 +1483,7 @@ hostname  -I
 
 
 
-## #3. 改ping名
+## #4. 改ping名
 
 ```3
 vim ~/hosts
@@ -1460,8 +1494,6 @@ vim ~/hosts
 
 vim  /etc/profile.d/dns.sh  
 cat  ~/hosts  >  /etc/hosts    
-
-
 source   /etc/profile.d/dns.sh  
 
 #验证
@@ -1473,6 +1505,533 @@ ping hadoop03
 ```
 
 ![image-20241105193216277](png/image-20241105193216277.png)
+
+
+
+
+
+# 十二. ssh免密码登录
+
+[设置ssh免密码登录——让通讯更畅通](https://docs.qq.com/doc/DZUdwSUVYTmVCelJO)
+
+```
+习题13 
+用镜像hadoop:v4创建容器 hadoop01、hadoop02、hadoop03   设置它们之间免密码登录
+```
+
+
+
+## #1. 生成密钥对
+
+```
+#删除 ~/.ssh = 销毁秘钥
+#id_rsa：私钥， id_rsa.pub：公钥
+#查看
+ls  -a  
+
+ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+```
+
+
+
+## #2. 复制秘钥
+
+```
+#ssh-copy-id   -i    IP/名字/自己
+					
+#可能前边密码没有设置成功，重新设置一下
+
+docker exec -it hadoop01 /bin/bash
+echo  'root:123456' | chpasswd
+exit
+
+docker exec -it hadoop02 /bin/bash
+echo  'root:123456' | chpasswd
+exit
+
+docker exec -it hadoop03 /bin/bash
+echo  'root:123456' | chpasswd
+exit
+
+#yes  123456
+ssh-copy-id -i hadoop01 && ssh-copy-id -i hadoop02 && ssh-copy-id -i hadoop03
+
+```
+
+![image-20241108113349264](png/image-20241108113349264.png)
+
+
+
+## #3. 制作 hadoop:v5
+
+```
+mkdir ssh && cd ssh
+
+cat >Dockerfile  <<eof
+FROM hadoop:v4
+RUN  \
+rm -rf /root/.ssh && ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa && \
+echo 'Host *' > /root/.ssh/config && \
+echo '    StrictHostKeyChecking no' >> /root/.ssh/config && \
+echo '    UserKnownHostsFile=/dev/null' >> /root/.ssh/config
+eof
+
+docker build -t="hadoop:v5"   .
+```
+
+# --------------------------------------------------------------------------------
+
+# 以下部分笔记写的较为潦草，可能有报错（陪女朋友去了，没心思写）
+
+# 十三. 启动高可用hadoop系统 （跳过）
+
+[启动高可用hadoop系统——终于大功告成](https://docs.qq.com/doc/DZWpKZm9yZm1Vb0Nx)
+
+```
+习题14
+安装并启动高可用hadoop系统
+```
+
+在完成 十二 的情况下运行
+
+## #1. 启动zookeeper
+
+```
+#每个容器都启动
+#修改myid值，用于标识
+
+
+docker exec -it hadoop01 /bin/bash
+zkServer.sh start     
+exit                       
+
+docker exec -it hadoop02 /bin/bash
+echo '2' > /opt/programs/zookeeper-3.4.12/data/myid     
+zkServer.sh start    
+exit                           
+
+docker exec -it hadoop03 /bin/bash
+echo '3' > /opt/programs/zookeeper-3.4.12/data/myid    
+zkServer.sh start      
+exit 
+```
+
+
+
+## #2.启动 journalnode
+
+```
+docker exec -it hadoop01 /bin/bash
+hadoop-daemon.sh start journalnode
+exit
+
+docker exec -it hadoop02 /bin/bash
+hadoop-daemon.sh start journalnode
+exit
+
+docker exec -it hadoop03 /bin/bash
+hadoop-daemon.sh start journalnode
+exit
+```
+
+
+
+# 十四.快速搭建一个ubuntu系统  （这个可以仔细看看，认真写的）
+
+[快速搭建一个ubuntu系统](https://docs.qq.com/doc/DZUdZREpJTFpEYnhF)
+
+```
+习题15
+创建ubuntu虚拟机，并安装java、eclipse 
+```
+
+## #1.下载ubuntu系统
+
+```
+wget    ftp://172.16.193.251/ubuntu-desktop-lxde-vnc.tar       
+docker load < ubuntu-desktop-lxde-vnc.tar         
+```
+
+## #2.查看导入是否成功
+
+```
+docker images                                                                         
+```
+
+## #3.运行容器，并登录ubuntu系统  
+
+```
+docker run -d \
+--name ubuntu \
+-p 6080:80 \
+-p 5900:5900 \
+-e VNC_PASSWORD=123@abc \
+dorowu/ubuntu-desktop-lxde-vnc
+
+#登录ubuntu系统  
+#格式：http://云计算机IP:6080
+172.16.125.240:6080
+123@abc
+```
+
+## #4.安装java  （在Ubuntu中）
+
+```
+apt  update
+apt list OpenJDK\*
+
+apt install openjdk-21-jdk  -y
+
+java -version
+```
+
+![image-20241218004207460](png/image-20241218004207460.png)
+
+## #5.安装eclipse
+
+```
+wget ftp://172.16.193.251/eclipse-inst-linux64.tar.gz
+tar -zxvf eclipse-inst-linux64.tar.gz
+```
+
+## #6.图形界面太过简单，和Windows操作一样，此不赘述
+
+
+
+## #7.安装 thonny
+
+```
+apt install python3-pip -y
+pip3 install thonny
+apt install python3-tk -y
+
+#登录
+如果是2班 65号的同学，则网址为172.16.121.21:2265
+172.16.121.21:2239
+```
+
+
+
+# 十五.安装伪分布式hadoop  （当时忘保存了，跳过）
+
+[安装伪分布式hadoop——再次出发](https://docs.qq.com/doc/DZUNWaFRuTEliVFRa)
+
+```
+习题16
+安装伪分布式的hadoop系统
+```
+
+## #1.下载指令代码
+
+```
+rm -rf /usr/sbin/fun && wget -P /usr/sbin/  ftp://172.16.193.251/sh/fun && echo '. fun'>/etc/profile.d/myfun.sh && . fun
+```
+
+## #2.创建一台机器nczy
+
+```
+pc  nczy   hadoop:v2                                               
+go nczy 
+cd   /opt/programs/hadoop-2.7.6/etc/hadoop          
+```
+
+## #3.1 快捷方法
+
+```
+mkdir nczy && cd nczy
+cat >Dockerfile  <<eof
+FROM  hadoop:v1
+RUN  \
+cd   /opt/programs/hadoop-2.7.6/etc/hadoop   &&  wget  -N  ftp://172.16.193.251/xml0/*  && \ 
+yum install dos2unix  -y && dos2unix *  &&  echo  'hadoop0'  >  slaves  &&  x='export HADOOP_CONF_DIR=\$.*'    && \
+y='export HADOOP_CONF_DIR=/opt/programs/hadoop-2.7.6/etc/hadoop'    && \
+sed -i "s|\$x|\$y|"   hadoop-env.sh 
+eof
+docker build -t="hadoop:v0"  .  
+```
+
+## #3.2修改配置文件
+
+### 修改配置文件core-site.xml
+
+```
+#将 “<configuration>” 和 “</configuration>” 标签的内容修改如下:
+vim core-site.xml
+
+<configuration>
+<!--配置 NameNode -->
+<property>
+<name>fs.defaultFS</name>
+<value>hdfs://hadoop0:9000</value>
+</property>
+<!--指定Hadoop数据的临时存放目录-->
+<property>
+<name>hadoop.tmp.dir</name>
+<value>/opt/programs/hadoop-2.7.6/tmp</value>
+</property>
+</configuration>
+
+:wq
+```
+
+### 修改配置文件hdfs-site.xml
+
+```
+#将 “<configuration>” 和 “</conflguration>” 标签的内容修改如下：
+vim hdfs-site.xml
+
+<configuration>
+<!--伪分布式只有一台机器，配置副本数量为1-->
+<property>
+<name>dfs.replication</name>
+<value>1 </value>
+</property>
+</configuration>
+
+:wq
+```
+
+### 修改配置文件 mapred-site.xmlo
+
+```
+mv mapred-site.xml.template mapred-site.xml
+
+#将“<configuration，”和“</configuration>”标签的内容修改如下：
+vim mapred-site.xmlo
+
+<configuration>
+<!--配置MapReduce运行在YARN上-->
+<property>
+<name>mapreduce.framework.name</name>
+<value>yarn</value>
+</property>
+<!--配置集群的权限验证-->
+<property>
+<name>dfs.permissions</name>
+<value>false</value>
+</property>
+</configuration>
+
+:wq
+```
+
+### 修改配置文件yam-site.xml    
+
+```
+#将 “<configuration>” 和 “</configuration>” 标签的内容修改如下： 
+vim yam-site.xml    
+
+<configuration>
+<!--指定 ResourceManager -->
+<property>
+<name>yam.resourcemanager.hostname</name>
+<value>hadoop0</value>
+</property>
+<!--启动NodeManger时，server的加载方式-->
+<property>
+<name>yarn.nodemanager.aux-services</name>
+<value>mapreduce_shuffle</value>
+</property>
+</configuration>
+
+:wq
+```
+
+### #修改配置文件slaves
+
+```
+echo  'hadoop0'  >  slaves
+```
+
+### #修改配置文件hadoop-env.sh
+
+```
+#将 “export HADOOP_CONF_DIR=$ {HADOOP_CONF_DIR:-7etc/hadoopn}" 一行改为:
+vim hadoop-env.sh
+export HADOOP_CONF_DIR=/opt/programs/hadoop-2.7.6/etc/hadoop
+
+:wq
+
+source hadoop-env.sh
+
+x='export HADOOP_CONF_DIR=$.*'
+y='export HADOOP_CONF_DIR=/opt/programs/hadoop-2.7.6/etc/hadoop'
+sed -i "s|$x|$y|"   hadoop-env.sh 
+source hadoop-env.sh
+```
+
+## #4.保存镜像
+
+```
+exit 
+docker stop nczy
+docker commit nczy hadoop:v0
+```
+
+
+
+-----------------------
+
+# 到此为止吧，能考好多看各位实力了，我不想写了
+
+## #5.启动hadoop系统
+
+```
+#报错就跳过这一句
+docker network prune -f && \
+docker network create --subnet=192.168.0.0/24 staticnet  
+
+docker run -itd  --name=hadoop0  -h hadoop0  --privileged \
+--net staticnet --ip 192.168.0.200 \
+hadoop:v0  /usr/sbin/init
+
+2. 设置免密码
+go hadoop0     #进入机器中
+rm -rf ~/.ssh/
+ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa && ssh-copy-id -i hadoop0
+3. 格式化HDFS
+执行以下命令：
+hdfs namenode -format
+
+```
+
+
+
+
+
+十六.
+
+
+
+## #1. 安装java
+
+```
+java   -version
+```
+
+## #2.安装 maven
+
+```
+wget ftp://172.16.193.251/apache-maven-3.6.1-bin.tar.gz 
+tar -zxvf apache-maven-3.6.1-bin.tar.gz -C /opt/  
+
+vi   /etc/profile.d/my_maven.sh
+export MAVEN_HOME=/opt/apache-maven-3.6.1export PATH=$PATH:$MAVEN_HOME/bin
+
+source    /etc/profile.d/my_maven.sh
+```
+
+## #3.安装eclipse
+
+```
+wget ftp://172.16.193.251/eclipse-jee-luna-SR2-linux-gtk-x86_64.tar.gz   
+
+tar -zxvf eclipse-jee-luna-SR2-linux-gtk-x86_64.tar.gz -C /opt/  
+
+cd /opt/eclipse
+
+ln -s /opt/eclipse/eclipse /usr/bin/eclipse
+```
+
+## #4.安装maven仓库
+
+```
+wget ftp://172.16.193.251/repository.tar.gz
+mkdir ~/.m2/
+tar -zxvf repository.tar.gz -C ~/.m2/
+cp /opt/apache-maven-3.6.1/conf/settings.xml ~/.m2
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
