@@ -1899,9 +1899,9 @@ hdfs namenode -format
 
 
 
-十六.
+# 十六.安装eclipse
 
-
+[安装eclipse——打造hadoop图形化操作环境](https://docs.qq.com/doc/DZUhBUmR3WXViekhQ)
 
 ## #1. 安装java
 
@@ -1945,23 +1945,30 @@ cp /opt/apache-maven-3.6.1/conf/settings.xml ~/.m2
 
 
 
+# 十七.hadoop统计单词——图形化方式操作让你轻松入门
 
 
 
+```
+习题18
+统计单词
+```
 
+## 一. 配置maven  （图形界面，如图）
 
+![image-20241218085750736](png/image-20241218085750736.png)
 
+![image-20241218090229842](png/image-20241218090229842.png)
 
+![image-20241218090320347](png/image-20241218090320347.png)
 
+![image-20241218090642869](png/image-20241218090642869.png)
 
+![image-20241218090700184](png/image-20241218090700184.png)
 
+![image-20241218090721639](png/image-20241218090721639.png)
 
-
-
-
-
-
-
+# 我到这就缺东西了，，，，不想写了，熄火
 
 
 
