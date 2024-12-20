@@ -567,9 +567,15 @@ ls -l /etc | grep '^d' | wc -l
 
 #3
 ls -l /etc | grep '^l' | wc -l
+
+#4
+cat a1.txt | grep "营山" | grep "男" | wc -l
+
+#5
+cat -n a1.txt | grep "营山" | grep "男" | awk '$1>=50 && $1<=65'
 ```
 
-![image-20241031201658019](png/image-20241031201658019.png)
+![image-20241219223821707](png/image-20241219223821707.png)
 
 
 

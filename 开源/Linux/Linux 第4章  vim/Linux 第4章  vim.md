@@ -1,3 +1,7 @@
+# Linux 第4章  vim
+
+http://172.16.198.15:9936/z04.html
+
 # vim
 
 # ESC键 =>
@@ -16,7 +20,7 @@
 
 ## 	: %s /word1 /word2  g 替换  g 全局
 
-## 	复制/粘贴  (有问题)
+## 	复制/粘贴 
 
 ​	yy 复制当前行
 
@@ -37,6 +41,7 @@ I will study vim hard.
 I hope to achieve good grades in the vim exam.
 
 #3
+2gg
 2yy
 
 #4
@@ -64,8 +69,9 @@ dd
 vim /root/vimfile
 
 #8
-dG
-:wq /root/vimbak
+:w /root/vimbak 
+1dd 
+:wq
 
 #9
 cat vimbak 
